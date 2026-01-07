@@ -740,7 +740,7 @@ if (isMobileDuplicate(formData.Mobile_no, editId)) {
     {/* HEADER */}
     <div className="flex items-center justify-between">
       {/* LEFT SIDE */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2">
         <div className="p-2 bg-white rounded-lg shadow-sm">
           {editId ? (
             <PencilSquareIcon className="w-6 h-6 text-blue-600" />

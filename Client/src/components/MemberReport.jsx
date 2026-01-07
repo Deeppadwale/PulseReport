@@ -3254,6 +3254,8 @@ const handleSendEmail = async () => {
         width={"1200px"}
       >
         <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+
+
           <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
             {/* Doc Date */}
             <div className="col-span-1 xs:col-span-2 sm:col-span-1 md:col-span-1 lg:col-span-1">
@@ -3653,7 +3655,7 @@ const handleSendEmail = async () => {
                                   handleDetailChange(index, "report_date", e.target.value)
                                 }
                                 required
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 text-sm sm:text-base"
+                               className="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-blue-300 transition-all duration-200 text-sm sm:text-base"
                               />
                             </div>
 
@@ -3672,7 +3674,7 @@ const handleSendEmail = async () => {
                                     handleDetailChange(index, "Report_id", e.target.value)
                                   }
                                   required
-                                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none pr-8 sm:pr-10 hover:border-blue-300 text-sm sm:text-base"
+                                 className="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-blue-300 transition-all duration-200 text-sm sm:text-base"
                                 >
                                   <option value="" className="text-gray-400">
                                     Select report type
@@ -3712,7 +3714,7 @@ const handleSendEmail = async () => {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 text-sm sm:text-base"
+                               className="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-blue-300 transition-all duration-200 text-sm sm:text-base"
                               />
                             </div>
 

@@ -270,6 +270,7 @@ import {
 
 import logo from "../../assets/Dp 3.png";
 import { useGetMemberUserImageQuery } from "../../services/medicalAppoinmentApi";
+import EditProfile from "../../Pages/Profile/Editprofile";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -491,7 +492,7 @@ export default function Navbar() {
 
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-44 bg-white border rounded-xl shadow-lg">
-                      {/* <button
+                      <button
                         onClick={() => {
                           setEditOpen(true);
                           setProfileOpen(false);
@@ -499,7 +500,7 @@ export default function Navbar() {
                         className="w-full text-left px-4 py-3 hover:bg-gray-50"
                       >
                         ✏️ Edit Profile
-                      </button> */}
+                      </button>
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-3 hover:bg-red-50 text-red-600"
@@ -519,7 +520,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* <EditProfile open={editOpen} onClose={() => setEditOpen(false)} /> */}
+      <EditProfile open={editOpen} onClose={() => setEditOpen(false)} />
     </>
   );
 }

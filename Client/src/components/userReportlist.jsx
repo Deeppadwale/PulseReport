@@ -286,7 +286,7 @@ const MemberReportTable = () => {
                     <td className="p-4">
                       {formatDate(detail.report_date)}
                     </td>
-                    <td className="p-4">
+                    <td className="p-3">
                       {filename && (
                         <div className="flex gap-3">
                           <button onClick={() => handlePreview(filename)}>👁</button>

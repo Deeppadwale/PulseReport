@@ -1,5 +1,6 @@
 
 import mimetypes
+import uuid
 from fastapi import (
     APIRouter, Depends, HTTPException,
     status, UploadFile, File, Form
@@ -121,7 +122,12 @@ async def create_new_member(
 
     return await create_member(db, member_data)
 
-# ---------- UPDATE ----------
+# ---------- UPDATE ----------import uuid
+import aiofiles
+from fastapi import UploadFile, File, Form, Depends, HTTPException
+from datetime import date
+from typing import Optional
+
 @router.put("/{member_id}", response_model=MemberResponse)
 async def update_member_api(
     member_id: int,
@@ -130,7 +136,7 @@ async def update_member_api(
     Member_address: Optional[str] = Form(None),
     Mobile_no: Optional[str] = Form(None),
     other_details: Optional[str] = Form(None),
-    User_Type:Optional[str]=Form(None),
+    User_Type: Optional[str] = Form(None),
     blood_group: Optional[str] = Form(None),
     date_of_birth: Optional[date] = Form(None),
     Modified_by: Optional[str] = Form(None),
@@ -146,39 +152,63 @@ async def update_member_api(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    def save_file(folder, file):
+    # ---------- ASYNC FILE SAVE ----------
+    async def save_file(folder: str, file: UploadFile | None):
         if not file:
             return None
-        path = os.path.join(folder, file.filename)
-        with open(path, "wb") as f:
-            f.write(file.file.read())
+
+        filename = f"{uuid.uuid4()}_{file.filename}"
+        path = os.path.join(folder, filename)
+
+        async with aiofiles.open(path, "wb") as f:
+            await f.write(await file.read())
+
         return path
 
-    user_image_path = save_file(USER_FOLDER, user_image)
-    pan_path = save_file(PAN_FOLDER, pan_file)
-    adhar_path = save_file(ADHAR_FOLDER, adhar_file)
-    insurance_path = save_file(INSURANCE_FOLDER, insurance_file)
+    user_image_path = await save_file(USER_FOLDER, user_image)
+    pan_path = await save_file(PAN_FOLDER, pan_file)
+    adhar_path = await save_file(ADHAR_FOLDER, adhar_file)
+    insurance_path = await save_file(INSURANCE_FOLDER, insurance_file)
 
-    update_data = MemberUpdate(
-        Member_name=Member_name,
-        Member_address=Member_address,
-        Mobile_no=Mobile_no,
-        other_details=other_details,
-        User_Type=User_Type,
-        blood_group=blood_group,
-        date_of_birth=date_of_birth,
-        Modified_by=Modified_by
-    )
+    # ---------- UPDATE DATA (ONLY NON-EMPTY FIELDS) ----------
+    update_data = {}
+
+    if Member_name is not None:
+        update_data["Member_name"] = Member_name.strip()
+
+    if Member_address is not None:
+        update_data["Member_address"] = Member_address.strip()
+
+    if Mobile_no is not None:
+        update_data["Mobile_no"] = Mobile_no.strip()
+
+    if other_details is not None:
+        update_data["other_details"] = other_details.strip()
+
+    if User_Type is not None:
+        update_data["User_Type"] = User_Type
+
+    if blood_group is not None:
+        update_data["blood_group"] = blood_group
+
+    if date_of_birth is not None:
+        update_data["date_of_birth"] = date_of_birth
+
+    if Modified_by is not None:
+        update_data["Modified_by"] = Modified_by
+
+    member_update = MemberUpdate(**update_data)
 
     return await update_member(
-        db,
-        member,
-        update_data,
-        user_image_path,
-        pan_path,
-        adhar_path,
-        insurance_path
+        db=db,
+        db_member=member,
+        update_data=member_update,
+        user_image_path=user_image_path,
+        pan_file_path=pan_path,
+        adhar_file_path=adhar_path,
+        insurance_file_path=insurance_path,
     )
+
 
 
 DEFAULT_IMAGE_PATH = "assets/"

@@ -127,10 +127,10 @@ function OtpLoginPage() {
 
         <div className="p-8 md:p-12 flex flex-col">
           <div >
-            <img src={logo} alt="PulseReport" className="h-36 w-auto object-contain" />
+            <img src={logo} alt="PulseReport" className="h-20 w-auto object-contain" />
           </div>
 
-          <h1 className="text-[32px] md:text-[44px] font-normal text-[#1f1f1f] leading-tight mb-4">
+          <h1 className="text-[32px] md:text-[40px] font-normal text-[#1f1f1f] leading-tight mb-6">
             {otpSent ? "Verify it's you" : "Sign in"}
           </h1>
           <p className="text-base md:text-lg text-[#444] max-w-[400px]">
