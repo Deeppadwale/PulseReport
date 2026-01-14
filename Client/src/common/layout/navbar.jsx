@@ -332,7 +332,7 @@ export default function Navbar() {
 
   const baseNavItems = [
     { label: "Dashboard", path: "/app/dashboard", icon: Home },
-    { label: "Family Member", path: "/app/member-list", icon: Users },
+    // { label: "Family Member", path: "/app/member-list", icon: Users },
     {
       label: "Master",
       icon: FileText,

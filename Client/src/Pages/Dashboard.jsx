@@ -1,699 +1,1398 @@
-
-import React, { useState, useEffect } from "react";
-import {
-  Users,
-  FileText,
-  Calendar,
-  Activity,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Users,FileText,ChevronLeft,ChevronRight,Download, Eye, User,Calendar,Filter, Mail, File, ChevronDown,Search, Bell,X, CheckCircle,AlertCircle,Pill, Clock,Stethoscope,ExternalLink, Plus, FilePlus,CalendarPlus,Upload,Activity,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  useGetMemberUserImageQuery,
+  useGetMemberMastersQuery,
+} from "../services/medicalAppoinmentApi";
+import { useGetDetailedRecentActivityQuery  } from "../services/dashboardApi";
 
-import { useGetMemberUserImageQuery } from "../services/medicalAppoinmentApi";
-import { useGetMemberMastercountQuery } from "../services/medicalAppoinmentApi";
+import {
+  useGetRemindersQuery,
+  useUpdateReminderFlagMutation,
+} from "../services/upcomingAppointmentApi";
+import { useGetMemberReportsByFamilyQuery } from "../services/memberReportApi";
+import { useGetReportMastersQuery } from "../services/reportMasterApi";
 import { useGetReportMasterscountQuery } from "../services/reportMasterApi";
-import {useGetFamilyMasterscountQuery} from "../services/familyMasterApi"
-import MemberReportTable from "../components/userReportlist";
 
-const SimpleMedicalDashboard = () => {
+const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_BASE_URL;
+
+// Activity icon and color mapping
+const activityIconMap = {
+  REPORT_CREATED: { 
+    icon: FilePlus, 
+    color: "text-blue-600", 
+    bgColor: "bg-blue-100",
+    label: "Report Created"
+  },
+  REPORT_UPLOADED: { 
+    icon: Upload, 
+    color: "text-purple-600", 
+    bgColor: "bg-purple-100",
+    label: "Report Uploaded"
+  },
+  APPOINTMENT_CREATED: { 
+    icon: CalendarPlus, 
+    color: "text-green-600", 
+    bgColor: "bg-green-100",
+    label: "Appointment Created"
+  },
+  MEDICINE_ADDED: { 
+    icon: Pill, 
+    color: "text-amber-600", 
+    bgColor: "bg-amber-100",
+    label: "Medicine Added"
+  },
+};
+
+// Create a cache for image URLs
+const imageUrlCache = new Map();
+
+// Create a separate Slider component
+const SliderSection = React.memo(({ sliderImages }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [imageUrl, setImageUrl] = useState(null);
-  const navigate = useNavigate();
-
-  const member_id = sessionStorage.getItem("member_id");
-  const family_name = sessionStorage.getItem("Family_Name");
-  const family_id = sessionStorage.getItem("family_id");
-
-  /* ================= COUNTS ================= */
-
-const { data: familyCount, isLoading: familyCountLoading } = useGetMemberMastercountQuery(family_id);
-
-  const {
-    data: reportCount,
-    isLoading: reportCountLoading,
-  } = useGetReportMasterscountQuery();
-
-  const totalFamilyMembers = familyCount ?? 0;
-  const totalReports = reportCount ?? 0;
-
-  /* ================= USER IMAGE ================= */
-  const { data: imageBlob } = useGetMemberUserImageQuery(
-    member_id ? { member_id } : null,
-    { skip: !member_id }
-  );
-
-  useEffect(() => {
-    if (imageBlob) {
-      const url = URL.createObjectURL(imageBlob);
-      setImageUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [imageBlob]);
-
-  /* ================= SLIDER ================= */
-  const sliderImages = [
-    {
-      id: 1,
-      title: "Protect Your Community",
-      description:
-        "Stay ahead of the season. Get your latest flu and booster shots today.",
-      image:
-        "https://images.unsplash.com/photo-1618961734760-466979ce35b0?w=800",
-    },
-    {
-      id: 2,
-      title: "Maternal & Child Care",
-      description:
-        "Expert care for mothers and little ones, from prenatal to pediatrics.",
-      image:
-        "https://images.unsplash.com/photo-1531983412531-1f49a365ffed?w=800",
-    },
-    {
-      id: 3,
-      title: "Emergency Care 24/7",
-      description:
-        "Compassionate emergency response when every second counts.",
-      image:
-        "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800",
-    },
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [sliderImages.length]);
 
-  /* ================= STATS ================= */
-  const stats = [
-    {
-      icon: Users,
-      value: familyCountLoading ? "..." : totalFamilyMembers,
-      label: "Total Family Member",
-      bg: "bg-blue-50",
-      text: "text-blue-600",
-      path: "/app/member-list",
-    },
-    
-    {
-      icon: FileText,
-      value: reportCountLoading ? "..." : totalReports,
-      label: "ALL Medical Reports",
-      bg: "bg-amber-50",
-      text: "text-amber-600",
-      path: "/app/reportMaster",
-    },
-    
-  ];
+  const goToPrevious = useCallback(() => {
+    setCurrentSlide(
+      (prev) => (prev - 1 + sliderImages.length) % sliderImages.length,
+    );
+  }, [sliderImages.length]);
+
+  const goToNext = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+  }, [sliderImages.length]);
 
   return (
-    <div>
-      {/* HEADER */}
-      <header className="mb-6">
-        <div className="max-w-8xl mx-auto">
-          <h2 className="text-3xl font-bold text-slate-800">
-            Welcome <span className="text-blue-600">{family_name}</span>
-          </h2>
+    <section className="relative mb-10">
+      <div className="relative h-[250px] rounded-2xl overflow-hidden shadow-lg">
+        {sliderImages.map((slide, index) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-all duration-1000 ${
+              index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
+            }`}
+            style={{ transition: "opacity 1s ease-in-out" }}
+          >
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                console.error(`Failed to load slider image: ${slide.image}`);
+                e.target.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-black/40 flex items-center p-6">
+              <div className="text-white max-w-lg">
+                <h2 className="text-2xl font-bold mb-2">{slide.title}</h2>
+                <p className="opacity-90">{slide.description}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+});
+
+SliderSection.displayName = "SliderSection";
+
+// Create a separate NotificationBell component
+const NotificationBell = React.memo(
+  ({
+    unreadCount,
+    remindersData,
+    remindersLoading,
+    updateReminderFlag,
+    refetchReminders,
+    navigate,
+    showNotifications,
+    setShowNotifications,
+  }) => {
+    const notificationRef = useRef(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (
+          notificationRef.current &&
+          !notificationRef.current.contains(event.target)
+        ) {
+          setShowNotifications(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }, [setShowNotifications]);
+
+    const getMedicationTime = useCallback((detail) => {
+      const times = [];
+      if (detail.Morning === "Y") times.push("Morning");
+      if (detail.AfterNoon === "Y") times.push("Afternoon");
+      if (detail.Evening === "Y") times.push("Evening");
+      return times.length > 0 ? times.join(", ") : "Not specified";
+    }, []);
+
+    const getDaysDifference = useCallback((endDate) => {
+      const today = new Date();
+      const end = new Date(endDate);
+      const diffTime = end - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }, []);
+
+    const handleMarkAsDone = useCallback(
+      async (memberId, detailId) => {
+        try {
+          await updateReminderFlag({
+            memberId,
+            detailId,
+            reminder: "N",
+          }).unwrap();
+          refetchReminders();
+        } catch (error) {
+          console.error("Failed to update reminder:", error);
+        }
+      },
+      [updateReminderFlag, refetchReminders],
+    );
+
+    const handleMarkAllAsRead = useCallback(async () => {
+      try {
+        const updatePromises = [];
+        remindersData?.forEach((appointment) => {
+          appointment.details?.forEach((detail) => {
+            if (detail.Reminder === "Y") {
+              updatePromises.push(
+                updateReminderFlag({
+                  memberId: appointment.Member_id,
+                  detailId: detail.upcommingAppointmentDetail_id,
+                  reminder: "N",
+                }).unwrap(),
+              );
+            }
+          });
+        });
+
+        await Promise.all(updatePromises);
+        refetchReminders();
+        setShowNotifications(false);
+      } catch (error) {
+        console.error("Failed to mark all as read:", error);
+      }
+    }, [
+      remindersData,
+      updateReminderFlag,
+      refetchReminders,
+      setShowNotifications,
+    ]);
+
+    const handleViewAppointment = useCallback(
+      (appointmentId) => {
+        navigate(`/app/UpcomingAppointment?appointmentId=${appointmentId}`);
+        setShowNotifications(false);
+      },
+      [navigate, setShowNotifications],
+    );
+
+    return (
+      <div className="relative" ref={notificationRef}>
+        <button
+          onClick={() => setShowNotifications(!showNotifications)}
+          className="relative p-2 bg-gradient-to-r from-white to-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 shadow-sm border border-gray-200"
+        >
+          <Bell
+            className={`h-6 w-6 ${unreadCount > 0 ? "text-amber-600" : "text-gray-500"}`}
+          />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+
+        <AnimatePresence>
+          {showNotifications && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl z-50 border border-gray-200 overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Bell className="h-5 w-5 text-white" />
+                    <h3 className="text-lg font-bold text-white">
+                      Medication Reminders
+                    </h3>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg transition"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="p-1 hover:bg-white/20 rounded-full transition"
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-amber-100 text-sm mt-1">
+                  {unreadCount} active reminder{unreadCount !== 1 ? "s" : ""}
+                </p>
+              </div>
+
+              <div className="max-h-[500px] overflow-y-auto">
+                {remindersLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+                    <p className="text-gray-500 text-sm mt-2">
+                      Loading reminders...
+                    </p>
+                  </div>
+                ) : remindersData && remindersData.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {remindersData.map((appointment, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 hover:bg-gray-50 transition"
+                      >
+                        {appointment.details &&
+                          appointment.details.map(
+                            (detail, detailIdx) =>
+                              detail.Reminder === "Y" && (
+                                <div
+                                  key={detailIdx}
+                                  className="mb-4 last:mb-0 p-3 bg-amber-50 rounded-lg border border-amber-200"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <Pill className="h-4 w-4 text-amber-600" />
+                                        <h4 className="font-semibold text-gray-900">
+                                          {detail.Medicine_name}
+                                        </h4>
+                                        <span
+                                          className={`px-2 py-1 text-xs rounded-full ${
+                                            getDaysDifference(
+                                              detail.End_date,
+                                            ) === 0
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-amber-100 text-amber-800"
+                                          }`}
+                                        >
+                                          {getDaysDifference(
+                                            detail.End_date,
+                                          ) === 0
+                                            ? "Today"
+                                            : getDaysDifference(
+                                                  detail.End_date,
+                                                ) === 1
+                                              ? "Tomorrow"
+                                              : `${getDaysDifference(detail.End_date)} days left`}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center text-sm text-gray-600 mb-1">
+                                        <Stethoscope className="h-3 w-3 mr-1" />
+                                        Dr. {appointment.Doctor_name} •{" "}
+                                        {appointment.Hospital_name}
+                                      </div>
+
+                                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        {getMedicationTime(detail)}
+                                      </div>
+
+                                      <div className="text-xs text-gray-500 mb-3">
+                                        📅 Course:{" "}
+                                        {new Date(
+                                          detail.Start_date,
+                                        ).toLocaleDateString()}{" "}
+                                        -{" "}
+                                        {new Date(
+                                          detail.End_date,
+                                        ).toLocaleDateString()}
+                                      </div>
+
+                                      {detail.Remark && (
+                                        <div className="text-sm text-gray-700 bg-white p-2 rounded border mb-3">
+                                          💬 {detail.Remark}
+                                        </div>
+                                      )}
+
+                                      <div className="flex space-x-2">
+                                        <button
+                                          onClick={() =>
+                                            handleMarkAsDone(
+                                              appointment.Member_id,
+                                              detail.upcommingAppointmentDetail_id,
+                                            )
+                                          }
+                                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition flex items-center justify-center space-x-1"
+                                        >
+                                          <CheckCircle className="h-4 w-4" />
+                                          <span>Mark as Taken</span>
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleViewAppointment(
+                                              appointment.upcommingAppointment_id,
+                                            )
+                                          }
+                                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition flex items-center space-x-1"
+                                        >
+                                          <ExternalLink className="h-4 w-4" />
+                                          <span>View</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ),
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="bg-gradient-to-br from-gray-100 to-gray-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h4 className="font-semibold text-gray-700 mb-1">
+                      No Active Reminders
+                    </h4>
+                    <p className="text-gray-500 text-sm">
+                      You're all caught up! No pending medication reminders.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 p-3 bg-gray-50">
+                <button
+                  onClick={() => navigate("/app/UpcomingAppointment")}
+                  className="w-full py-2 text-center text-sm font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-lg transition"
+                >
+                  View All Appointments →
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  },
+);
+
+NotificationBell.displayName = "NotificationBell";
+
+// Create a separate MemberCard component with better image handling
+const MemberCard = React.memo(
+  ({ member, isSelected, onClick, allReports, member_id }) => {
+    const { data: imageBlob } = useGetMemberUserImageQuery(
+      { member_id: member.Member_id },
+      { skip: !member.Member_id },
+    );
+
+    // Use a persistent cache for image URLs
+    const [imageUrl, setImageUrl] = useState(() => {
+      // Check cache first
+      return imageUrlCache.get(member.Member_id) || null;
+    });
+
+    // Update cache when new image blob arrives
+    useEffect(() => {
+      if (imageBlob && !imageUrlCache.has(member.Member_id)) {
+        const newUrl = URL.createObjectURL(imageBlob);
+        imageUrlCache.set(member.Member_id, newUrl);
+        setImageUrl(newUrl);
+      }
+    }, [imageBlob, member.Member_id]);
+
+    // Count total details for this member
+    const detailCount = useMemo(() => {
+      if (!Array.isArray(allReports)) return 0;
+      let count = 0;
+      allReports.forEach((report) => {
+        if (
+          Number(report.Member_id) === Number(member.Member_id) &&
+          report.details &&
+          Array.isArray(report.details)
+        ) {
+          count += report.details.length;
+        }
+      });
+      return count;
+    }, [allReports, member.Member_id]);
+
+    // Get initials for fallback
+    const getInitials = useCallback((name) => {
+      return name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }, []);
+
+    const initials = useMemo(
+      () => getInitials(member.Member_name),
+      [member.Member_name, getInitials],
+    );
+
+    return (
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="flex flex-col items-center cursor-pointer p-1"
+        onClick={() => onClick(member)}
+      >
+        <div
+          className={`
+        relative mb-3 p-0.5 rounded-full
+        ${
+          isSelected
+            ? "bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 shadow-lg"
+            : "bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400"
+        }
+        transition-all duration-300
+      `}
+        >
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={member.Member_name}
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  console.error(
+                    `Failed to load image for ${member.Member_name}`,
+                  );
+                  // Remove invalid URL from cache
+                  imageUrlCache.delete(member.Member_id);
+                  // Show fallback on error
+                  e.target.style.display = "none";
+                  // The fallback div is already there as backup
+                }}
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                <span className="text-xl font-bold text-white">{initials}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="absolute bottom-1 right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+        </div>
+
+        <div className="text-center max-w-[120px]">
+          <h4 className="font-bold text-gray-900 text-sm mb-1 truncate">
+            {member.Member_name}
+          </h4>
+
+          <div
+            className={`
+          inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold
+          ${
+            isSelected
+              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow"
+              : "bg-gray-100 text-gray-700"
+          }
+        `}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            {detailCount}
+          </div>
+        </div>
+      </motion.div>
+    );
+  },
+);
+
+MemberCard.displayName = "MemberCard";
+
+const SimpleMedicalDashboard = () => {
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedReportType, setSelectedReportType] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const itemsPerPage = 10;
+
+  const member_id = sessionStorage.getItem("member_id");
+  const family_name = sessionStorage.getItem("Family_Name");
+  const family_id = sessionStorage.getItem("family_id");
+  const navigate = useNavigate();
+
+  const {
+    data: remindersData = [],
+    isLoading: remindersLoading,
+    refetch: refetchReminders,
+  } = useGetRemindersQuery(member_id, {
+    skip: !member_id,
+  });
+
+  const [updateReminderFlag] = useUpdateReminderFlagMutation();
+
+  const { data: familyMembers = [], isLoading: membersLoading } =
+    useGetMemberMastersQuery(family_id, { skip: !family_id });
+
+  const { data: allReports = [], isLoading: reportsLoading } =
+    useGetMemberReportsByFamilyQuery(family_id, { skip: !family_id });
+
+  const { data: reportCount, isLoading: reportCountLoading } =
+    useGetReportMasterscountQuery();
+
+  const { data: reportTypes = [] } = useGetReportMastersQuery();
+
+  // Use the detailed recent activity query
+  const {
+    data: detailedRecentActivity = [],
+    isLoading: detailedActivityLoading,
+    isError: detailedActivityError,
+  } = useGetDetailedRecentActivityQuery(
+    {
+      member_id,
+      limit: 10,
+    },
+    { skip: !member_id }
+  );
+
+  // Helper function to check if data exists
+  const hasData = useCallback((data) => {
+    return data && Array.isArray(data) && data.length > 0;
+  }, []);
+
+  // Memoize slider images to prevent recreation on every render
+  const sliderImages = useMemo(
+    () => [
+      {
+        id: 1,
+        title: "Protect Your Community",
+        description:
+          "Stay ahead of the season. Get your latest flu and booster shots today.",
+        image:
+          "https://images.unsplash.com/photo-1618961734760-466979ce35b0?w=800",
+      },
+      {
+        id: 2,
+        title: "Maternal & Child Care",
+        description:
+          "Expert care for mothers and little ones, from prenatal to pediatrics.",
+        image:
+          "https://images.unsplash.com/photo-1531983412531-1f49a365ffed?w=800",
+      },
+      {
+        id: 3,
+        title: "Emergency Care 24/7",
+        description:
+          "Compassionate emergency response when every second counts.",
+        image:
+          "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800",
+      },
+    ],
+    [],
+  );
+
+  // Helper function to get activity description based on type
+  const getActivityDescription = useCallback((activity) => {
+    if (!activity) return "No description available";
+    
+    try {
+      switch (activity.activity_type) {
+        case "MEDICINE_ADDED":
+          const medicine = activity.main_data?.medicine_detail;
+          return `Medicine: ${medicine?.Medicine_name || "N/A"} , Remark: ${medicine?.Remark || "N/A"} , Days: ${medicine?.cource_days || "N/A"}`;
+
+        case "REPORT_CREATED":
+          return `${activity.main_data?.report_header?.remarks || "N/A"} `
+        
+        case "REPORT_UPLOADED": {
+          const detail = activity.main_data?.report_detail;
+          return ` ${detail?.Report_name || "N/A"} , ${detail?.Naration || ""}`;
+        }
+
+        case "APPOINTMENT_CREATED":
+          const appointment = activity.main_data?.appointment_header;
+          return `Doctor: ${appointment?.Doctor_name || "N/A"} , Hospital: ${appointment?.Hospital_name || "N/A"}`;
+
+        default:
+          return "N/A";
+      }
+    } catch (error) {
+      return "Error loading details";
+    }
+  }, []);
+
+  // Helper function to get member name from activity
+  const getMemberNameFromActivity = useCallback((activity) => {
+    if (!activity) return "N/A";
+    
+    try {
+      if (activity.main_data?.member_info?.Member_name) {
+        return activity.main_data.member_info.Member_name;
+      }
+      
+      return `Member ID: ${activity.member_id || 'N/A'}`;
+    } catch (error) {
+      return "N/A";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (remindersData && Array.isArray(remindersData)) {
+      let count = 0;
+      remindersData.forEach((appointment) => {
+        if (appointment.details && Array.isArray(appointment.details)) {
+          appointment.details.forEach((detail) => {
+            if (detail.Reminder === "Y") {
+              count++;
+            }
+          });
+        }
+      });
+      setUnreadCount(count);
+    }
+  }, [remindersData]);
+
+  const handleMemberSelect = useCallback((member) => {
+    setSelectedMember(member);
+    setSelectedReportType("all");
+    setSearchTerm("");
+    setCurrentPage(1);
+  }, []);
+
+  const getAllMemberDetails = useCallback(() => {
+    if (!selectedMember || !Array.isArray(allReports)) return [];
+
+    const allDetails = [];
+
+    allReports.forEach((report) => {
+      if (
+        Number(report.Member_id) === Number(selectedMember.Member_id) &&
+        report.details &&
+        Array.isArray(report.details)
+      ) {
+        report.details.forEach((detail) => {
+          allDetails.push({
+            ...detail,
+            parentReportDate: report.doc_date,
+            parentReportPurpose: report.purpose,
+            parentReportRemarks: report.remarks,
+            parentReportId: report.MemberReport_id,
+            parentCreatedBy: report.Created_by,
+          });
+        });
+      }
+    });
+
+    return allDetails;
+  }, [selectedMember, allReports]);
+
+  const getReportName = useCallback(
+    (reportId) => {
+      try {
+        const report = reportTypes.find((r) => Number(r.Report_id) === Number(reportId));
+        return report ? report.report_name : `Report ${reportId}`;
+      } catch (error) {
+        return `Report ${reportId}`;
+      }
+    },
+    [reportTypes],
+  );
+
+  const handlePreview = useCallback((filePath) => {
+    if (!filePath) {
+      alert("No file available to preview");
+      return;
+    }
+    const fileName = filePath.split(/[\\/]/).pop();
+    const previewUrl = `${API_BASE_URL}member-report/preview/${encodeURIComponent(fileName)}`;
+    window.open(previewUrl, "_blank");
+  }, []);
+
+  const handleDownload = useCallback((filePath) => {
+    if (!filePath) {
+      alert("No file available to download");
+      return;
+    }
+    const fileName = filePath.split(/[\\/]/).pop();
+    const downloadUrl = `${API_BASE_URL}member-report/download/${encodeURIComponent(fileName)}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  const allDetails = getAllMemberDetails();
+
+  // Filter by report type
+  let filteredDetails =
+    selectedReportType === "all"
+      ? allDetails
+      : allDetails.filter((detail) => Number(detail.Report_id) === Number(selectedReportType));
+
+  // Filter by search term
+  if (searchTerm) {
+    filteredDetails = filteredDetails.filter((detail) => {
+      try {
+        const reportName = getReportName(detail.Report_id).toLowerCase();
+        const doctor = detail.Doctor_and_Hospital_name?.toLowerCase() || "";
+        const narration = detail.Naration?.toLowerCase() || "";
+        const searchLower = searchTerm.toLowerCase();
+
+        return (
+          reportName.includes(searchLower) ||
+          doctor.includes(searchLower) ||
+          narration.includes(searchLower)
+        );
+      } catch (error) {
+        return false;
+      }
+    });
+  }
+
+  const totalPages = Math.ceil(filteredDetails.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedDetails = filteredDetails.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+  const availableReportTypes = useMemo(() => {
+    const types = new Set();
+    allDetails.forEach((detail) => {
+      if (detail.Report_id) {
+        types.add(detail.Report_id);
+      }
+    });
+
+    return Array.from(types)
+      .map((id) => ({
+        id,
+        name: getReportName(id),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allDetails, getReportName]);
+
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch (e) {
+      return dateString;
+    }
+  }, []);
+
+  const formatTime = useCallback((dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString("en-IN", {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return "";
+    }
+  }, []);
+
+  // Add a default member selection on load
+  useEffect(() => {
+    if (familyMembers.length > 0 && !selectedMember) {
+      const loggedInMember = familyMembers.find(m => Number(m.Member_id) === Number(member_id));
+      if (loggedInMember) {
+        setSelectedMember(loggedInMember);
+      } else {
+        setSelectedMember(familyMembers[0]);
+      }
+    }
+  }, [familyMembers, member_id, selectedMember]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-8xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between gap-6 py-4">
+            <div className="flex items-center gap-6 flex-1 min-w-0">
+              <div className="min-w-fit">
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Welcome <span className="text-blue-600">{family_name}</span>
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Pulse Report Dashboard
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar px-2 py-1">
+                {membersLoading ? (
+                  <div className="flex items-center px-4">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                  </div>
+                ) : hasData(familyMembers) ? (
+                  familyMembers.map((member) => (
+                    <div
+                      key={member.Member_id}
+                      className="relative flex-shrink-0"
+                    >
+                      <MemberCard
+                        member={member}
+                        isSelected={
+                          selectedMember?.Member_id === member.Member_id
+                        }
+                        onClick={handleMemberSelect}
+                        allReports={allReports}
+                        member_id={member_id}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 text-sm text-gray-500">
+                    No family members found
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="relative">
+                <NotificationBell
+                  unreadCount={unreadCount}
+                  remindersData={remindersData}
+                  remindersLoading={remindersLoading}
+                  updateReminderFlag={updateReminderFlag}
+                  refetchReminders={refetchReminders}
+                  navigate={navigate}
+                  showNotifications={showNotifications}
+                  setShowNotifications={setShowNotifications}
+                />
+              </div>
+
+              <button
+                onClick={() => navigate("/app/UpcomingAppointment")}
+                className="flex items-center gap-2 px-5 py-2.5
+                         bg-gradient-to-r from-blue-600 to-blue-500
+                         text-white rounded-xl font-medium
+                         shadow-md hover:shadow-lg
+                         hover:scale-[1.03] transition-transform duration-200"
+              >
+                <Plus className="h-4 w-4" />
+                New Appointment
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="max-w-10xl mx-auto px-4 sm:px-6 py-6">
-        {/* SLIDER */}
-        <section className="relative mb-10">
-          <div className="relative h-[350px] rounded-3xl overflow-hidden shadow-xl">
-            {sliderImages.map((slide, index) => (
-              <div
-                key={slide.id}
-                className={`absolute inset-0 transition-all duration-700 ${
-                  index === currentSlide ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <img
-                  src={slide.image}
-                  alt={slide.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/50 flex items-center p-10">
-                  <div className="text-white max-w-xl">
-                    <h2 className="text-4xl font-bold mb-4">
-                      {slide.title}
-                    </h2>
-                    <p className="text-lg">{slide.description}</p>
+        <SliderSection sliderImages={sliderImages} />
+        
+          {(detailedActivityLoading ||
+              detailedActivityError ||
+              hasData(detailedRecentActivity)) && (
+              <section className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-800">
+                        Recent Activity
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Latest medical activities and updates
+                      </p>
+                    </div>
                   </div>
                 </div>
+
+                {detailedActivityLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">
+                      Loading recent activities...
+                    </p>
+                  </div>
+                ) : detailedActivityError ? (
+              
+                  <div className="text-center py-12 border-2 border-dashed border-red-200 rounded-lg bg-red-50">
+                    <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+                    <p className="text-red-600 font-medium">
+                      Failed to load activities
+                    </p>
+                    <p className="text-red-500 text-sm mt-1">
+                      Please try again later
+                    </p>
+                  </div>
+                ) : hasData(detailedRecentActivity) ? (
+              
+                  <div className="rounded-lg border border-gray-200">
+                    
+                    <table className="min-w-full">
+                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                            Activity
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                            Details
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
+                            Member
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+                            Date
+                          </th>
+                        </tr>
+                      </thead>
+                    </table>
+
+                    <div className="max-h-[400px] overflow-y-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <tbody className="bg-white">
+                          {detailedRecentActivity.map((activity, index) => {
+                            const activityConfig =
+                              activityIconMap[activity.activity_type] || {
+                                icon: Activity,
+                                color: "text-gray-600",
+                                bgColor: "bg-gray-100",
+                                label:
+                                  activity.activity_type?.replace(/_/g, " ") ||
+                                  "Activity",
+                              };
+
+                            const IconComponent = activityConfig.icon;
+
+                            return (
+                              <tr
+                                key={activity.activity_id || index}
+                                className="hover:bg-gray-50 transition-colors"
+                              >
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={`p-2 rounded-lg ${activityConfig.bgColor}`}
+                                    >
+                                      <IconComponent
+                                        className={`h-5 w-5 ${activityConfig.color}`}
+                                      />
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {activityConfig.label}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                <td className="px-6 py-4 text-sm text-gray-600">
+                                  {getActivityDescription(activity)}
+                                </td>
+
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                  {getMemberNameFromActivity(activity)}
+                                </td>
+
+                                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                                  {formatDate(activity.activity_date)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            )}
+
+
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div
+            onClick={() => navigate("/app/member-master")}
+            className="bg-white p-6 rounded-2xl shadow border cursor-pointer
+                      hover:shadow-lg hover:ring-2 hover:ring-pink-200
+                      transition-all relative"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500 mb-2">
+                  Total Family Members
+                </p>
+
+                <h3 className="text-3xl font-bold text-slate-800">
+                  {familyMembers.length}
+                </h3>
               </div>
-            ))}
-          </div>
 
-          <button
-            onClick={() =>
-              setCurrentSlide(
-                (currentSlide - 1 + sliderImages.length) %
-                  sliderImages.length
-              )
-            }
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white p-3 rounded-full shadow"
-          >
-            <ChevronLeft />
-          </button>
-
-          <button
-            onClick={() =>
-              setCurrentSlide((currentSlide + 1) % sliderImages.length)
-            }
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white p-3 rounded-full shadow"
-          >
-            <ChevronRight />
-          </button>
-        </section>
-
-        {/* STATS */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              onClick={() => navigate(stat.path)}
-              className="bg-white p-6 rounded-2xl shadow border hover:shadow-lg cursor-pointer transition"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500 mb-2">
-                    {stat.label}
-                  </p>
-                  <h3 className="text-3xl font-bold text-slate-800">
-                    {stat.value}
-                  </h3>
-                </div>
-                <div
-                  className={`${stat.bg} ${stat.text} p-4 rounded-xl`}
-                >
-                  <stat.icon className="h-7 w-7" />
-                </div>
+              <div className="p-4 bg-blue-50 rounded-xl">
+                <Users className="h-7 w-7 text-blue-600" />
               </div>
             </div>
-          ))}
+          </div>
+
+          <div
+            onClick={() => navigate("/app/MemberReport")}
+            className="bg-white p-6 rounded-2xl shadow border cursor-pointer
+                      hover:shadow-lg hover:ring-2 hover:ring-perpule-200
+                      transition-all relative"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500 mb-2">
+                  {selectedMember
+                    ? `${selectedMember.Member_name}'s Reports`
+                    : "Your Reports"}
+                </p>
+
+                <h3 className="text-3xl font-bold text-slate-800">
+                  {selectedMember
+                    ? allDetails.length
+                    : Array.isArray(allReports)
+                      ? allReports
+                          .filter(
+                            (report) =>
+                              Number(report.Member_id) === Number(member_id),
+                          )
+                          .reduce(
+                            (total, report) =>
+                              total + (report.details?.length || 0),
+                            0,
+                          )
+                      : 0}
+                </h3>
+
+                <p className="text-xs text-blue-600 mt-1">
+                  {selectedMember ? "Selected member" : "Your personal records"}
+                </p>
+              </div>
+
+              <div className="p-4 bg-purple-50 rounded-xl">
+                <File className="h-7 w-7 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => setShowNotifications(true)}
+            className="bg-white p-6 rounded-2xl shadow border cursor-pointer
+                      hover:shadow-lg hover:ring-2 hover:ring-amber-200
+                      transition-all relative"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500 mb-2">Active Reminders</p>
+                <h3 className="text-3xl font-bold text-slate-800">
+                  {unreadCount}
+                </h3>
+                <p className="text-xs text-amber-600 mt-1">
+                  Pending medications
+                </p>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-xl relative">
+                <Bell className="h-7 w-7 text-amber-600" />
+                {unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-xs font-bold">
+                      {unreadCount > 9 ? "!" : unreadCount}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigate("/app/reportMaster")}
+            className="bg-white p-6 rounded-2xl shadow border cursor-pointer
+                      hover:shadow-lg hover:ring-2 hover:ring-green-200
+                      transition-all"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500 mb-2">
+                  Total Report Types
+                </p>
+
+                <h3 className="text-3xl font-bold text-slate-800">
+                  {reportCountLoading ? "Loading..." : reportCount}
+                </h3>
+              </div>
+
+              <div className="p-4 bg-green-50 rounded-xl">
+                <FileText className="h-7 w-7 text-green-600" />
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* MEMBER REPORT TABLE */}
-        {member_id && <MemberReportTable />}
+        {selectedMember && (
+          <section className="bg-white rounded-2xl shadow-lg p-6 mb-10">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
+              <div className="mb-4 lg:mb-0">
+                <div className="flex items-center mb-2">
+                  <User className="h-6 w-6 text-blue-600 mr-2" />
+                  <h3 className="text-xl font-bold text-slate-800">
+                    {selectedMember.Member_name}'s Medical Reports
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+                  <span>📞 {selectedMember.Mobile_no}</span>
+                  {selectedMember.blood_group && (
+                    <span>🩸 Blood Group: {selectedMember.blood_group}</span>
+                  )}
+                  <span>📊 Total Records: {allDetails.length}</span>
+                </div>
+              </div>
+
+              {hasData(allDetails) && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search reports..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full border-2 border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-blue-300 transition-all duration-200 resize-y text-sm sm:text-base"
+                    />
+                  </div>
+
+                  {hasData(availableReportTypes) && (
+                    <div className="relative">
+                      <select
+                        value={selectedReportType}
+                        onChange={(e) => {
+                          setSelectedReportType(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+                      >
+                        <option value="all">All Report Types</option>
+                        {availableReportTypes.map((type) => (
+                          <option key={type.id} value={type.id}>
+                            {type.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {reportsLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading reports...</p>
+              </div>
+            ) : !hasData(allDetails) ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 font-medium">
+                  No report details found for {selectedMember.Member_name}
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  No medical reports available for this member
+                </p>
+              </div>
+            ) : !hasData(filteredDetails) ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 font-medium">
+                  No reports match your search criteria
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Try adjusting your search or filter
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          Report Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          Report Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          Doctor/Hospital
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          Porpuse
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          File
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedDetails.map((detail, index) => (
+                        <tr
+                          key={detail.detail_id || index}
+                          className="hover:bg-blue-50 transition-colors"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <File className="h-5 w-5 text-blue-500 mr-2" />
+                              <div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {getReportName(detail.Report_id)}
+                                </span>
+                                <div className="text-xs text-gray-500">
+                                  Added on:{" "}
+                                  {formatDate(detail.parentReportDate)}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Calendar className="h-5 w-5 text-green-500 mr-2" />
+                              <span className="text-sm text-gray-900">
+                                {formatDate(detail.report_date)}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900">
+                              {detail.Doctor_and_Hospital_name || "N/A"}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-600 line-clamp-2">
+                              {detail.Naration || "N/A"}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {detail.uploaded_file_report ? (
+                              <div className="flex items-center">
+                                <FileText className="h-5 w-5 text-purple-500 mr-2" />
+                                <div>
+                                  <span className="text-sm font-medium text-gray-900 block">
+                                    {detail.uploaded_file_report
+                                      .split(/[\\/]/)
+                                      .pop()}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {detail.uploaded_file_report
+                                      .split(".")
+                                      .pop()
+                                      ?.toUpperCase()}{" "}
+                                    File
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">
+                                No file
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex space-x-2">
+                              {detail.uploaded_file_report ? (
+                                <>
+                                  <button
+                                    onClick={() =>
+                                      handlePreview(detail.uploaded_file_report)
+                                    }
+                                    className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                                    title="Preview"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleDownload(
+                                        detail.uploaded_file_report,
+                                      )
+                                    }
+                                    className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
+                                    title="Download"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400 px-3 py-1">
+                                  No file
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        )}
       </main>
+
+      <div className="fixed bottom-6 right-6 md:hidden">
+        <button
+          onClick={() => setShowNotifications(true)}
+          className="p-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full shadow-xl hover:shadow-2xl transition-all relative"
+        >
+          <Bell className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[24px] h-6 px-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
 
 export default SimpleMedicalDashboard;
-
-
-
-// import React, { useState, useEffect } from "react";
-// import {
-//   Heart,
-//   Brain,
-
-//   Activity,
-//   Eye,
-//   Bone,
-//   Users,
-//   FileText,
-//   ChevronRight,
-//   Zap,
-//   Shield,
-//   TrendingUp,
-// } from "lucide-react";
-// import { useNavigate } from "react-router-dom";
-
-// import { useGetMemberUserImageQuery } from "../services/medicalAppoinmentApi";
-// import { useGetMemberMastercountQuery } from "../services/medicalAppoinmentApi";
-// import { useGetReportMasterscountQuery } from "../services/reportMasterApi";
-// import MemberReportTable from "../components/userReportlist";
-
-// const SimpleMedicalDashboard = () => {
-//   const [selectedOrgan, setSelectedOrgan] = useState("heart");
-//   const [scanActive, setScanActive] = useState(false);
-//   const [healthData, setHealthData] = useState({
-//     heart: { rate: 72, status: "normal", lastCheck: "2 hours ago" },
-//     brain: { activity: 85, status: "optimal", lastCheck: "1 day ago" },
-//     lungs: { capacity: 92, status: "good", lastCheck: "3 days ago" },
-//     eyes: { vision: "20/20", status: "excellent", lastCheck: "6 months ago" },
-//     bones: { density: 94, status: "strong", lastCheck: "1 year ago" },
-//   });
-//   const [imageUrl, setImageUrl] = useState(null);
-//   const navigate = useNavigate();
-
-//   const member_id = sessionStorage.getItem("member_id");
-//   const family_name = sessionStorage.getItem("Family_Name");
-//   const family_id = sessionStorage.getItem("family_id");
-
-//   /* ================= COUNTS ================= */
-//   const { data: familyCount, isLoading: familyCountLoading } =
-//     useGetMemberMastercountQuery(family_id);
-
-//   const {
-//     data: reportCount,
-//     isLoading: reportCountLoading,
-//   } = useGetReportMasterscountQuery();
-
-//   const totalFamilyMembers = familyCount ?? 0;
-//   const totalReports = reportCount ?? 0;
-
-//   /* ================= USER IMAGE ================= */
-//   const { data: imageBlob } = useGetMemberUserImageQuery(
-//     member_id ? { member_id } : null,
-//     { skip: !member_id }
-//   );
-
-//   useEffect(() => {
-//     if (imageBlob) {
-//       const url = URL.createObjectURL(imageBlob);
-//       setImageUrl(url);
-//       return () => URL.revokeObjectURL(url);
-//     }
-//   }, [imageBlob]);
-
-//   /* ================= 3D BODY ORGANS ================= */
-//   const organs = [
-//     {
-//       id: "heart",
-//       name: "Heart",
-//       icon: Heart,
-//       color: "text-red-500",
-//       bg: "bg-red-50",
-//       border: "border-red-200",
-//       position: "top-[35%] left-1/2 transform -translate-x-1/2",
-//       description: "Cardiovascular System",
-//     },
-//     {
-//       id: "brain",
-//       name: "Brain",
-//       icon: Brain,
-//       color: "text-purple-500",
-//       bg: "bg-purple-50",
-//       border: "border-purple-200",
-//       position: "top-[15%] left-1/2 transform -translate-x-1/2",
-//       description: "Cognitive Function",
-//     },
-//     {
-//       id: "lungs",
-//       name: "Lungs",
-//       icon: Eye,
-//       color: "text-blue-500",
-//       bg: "bg-blue-50",
-//       border: "border-blue-200",
-//       position: "top-[45%] left-[35%]",
-//       description: "Respiratory System",
-//     },
-//     {
-//       id: "eyes",
-//       name: "Eyes",
-//       icon: Eye,
-//       color: "text-amber-500",
-//       bg: "bg-amber-50",
-//       border: "border-amber-200",
-//       position: "top-[20%] left-[40%]",
-//       description: "Visual Health",
-//     },
-//     {
-//       id: "bones",
-//       name: "Bones",
-//       icon: Bone,
-//       color: "text-gray-600",
-//       bg: "bg-gray-50",
-//       border: "border-gray-200",
-//       position: "top-[60%] left-1/2 transform -translate-x-1/2",
-//       description: "Skeletal System",
-//     },
-//   ];
-
-//   /* ================= STATS ================= */
-//   const stats = [
-//     {
-//       icon: Users,
-//       value: familyCountLoading ? "..." : totalFamilyMembers,
-//       label: "Family Members",
-//       color: "text-blue-600",
-//       bg: "bg-blue-50",
-//       path: "/app/member-list",
-//       trend: "↑ 2 this year",
-//     },
-//     {
-//       icon: FileText,
-//       value: reportCountLoading ? "..." : totalReports,
-//       label: "Medical Reports",
-//       color: "text-emerald-600",
-//       bg: "bg-emerald-50",
-//       path: "/app/reportMaster",
-//       trend: "12 pending",
-//     },
-//     {
-//       icon: Activity,
-//       value: "98.6°F",
-//       label: "Body Temp",
-//       color: "text-orange-600",
-//       bg: "bg-orange-50",
-//       path: "/app/vitals",
-//       trend: "Normal",
-//     },
-//     {
-//       icon: Shield,
-//       value: "100%",
-//       label: "Vaccination",
-//       color: "text-green-600",
-//       bg: "bg-green-50",
-//       path: "/app/vaccines",
-//       trend: "Up to date",
-//     },
-//   ];
-
-//   const handleOrganClick = (organId) => {
-//     setSelectedOrgan(organId);
-//     setScanActive(true);
-    
-//     // Simulate scanning animation
-//     setTimeout(() => {
-//       setScanActive(false);
-//     }, 2000);
-//   };
-
-//   const getOrganData = () => {
-//     return healthData[selectedOrgan] || {};
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-//       {/* HEADER */}
-//       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100">
-//         <div className="px-6 py-4">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <h1 className="text-2xl font-bold text-gray-800">
-//                 Medi<span className="text-blue-600">3D</span>View
-//               </h1>
-//               <p className="text-sm text-gray-600">
-//                 Interactive Health Visualization for{" "}
-//                 <span className="font-semibold text-blue-700">{family_name}</span>
-//               </p>
-//             </div>
-            
-//             <div className="flex items-center space-x-4">
-//               <button
-//                 onClick={() => setScanActive(!scanActive)}
-//                 className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
-//                   scanActive
-//                     ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
-//                     : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-//                 }`}
-//               >
-//                 <Zap className="h-4 w-4 mr-2" />
-//                 {scanActive ? "Scanning..." : "Full Body Scan"}
-//               </button>
-              
-//               {imageUrl && (
-//                 <img
-//                   src={imageUrl}
-//                   alt="Profile"
-//                   className="h-10 w-10 rounded-full border-2 border-blue-300 shadow-sm"
-//                 />
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </header>
-
-//       <main className="px-4 sm:px-6 py-6">
-//         {/* MAIN CONTENT GRID */}
-//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-//           {/* LEFT COLUMN - INTERACTIVE BODY */}
-//           <div className="lg:col-span-2">
-//             <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-100 shadow-xl p-6">
-//               <div className="flex items-center justify-between mb-6">
-//                 <div>
-//                   <h2 className="text-xl font-bold text-gray-800">3D Health Anatomy</h2>
-//                   <p className="text-gray-600">Click on organs to view detailed health data</p>
-//                 </div>
-//                 <div className="flex items-center space-x-2">
-//                   <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-//                   <span className="text-sm text-gray-600">Real-time</span>
-//                 </div>
-//               </div>
-
-//               {/* INTERACTIVE BODY VISUALIZATION */}
-//               <div className="relative h-[500px] bg-gradient-to-b from-blue-50/50 to-white rounded-xl border border-blue-100 overflow-hidden">
-//                 {/* Scanning animation */}
-//                 {scanActive && (
-//                   <div className="absolute inset-0 z-20 pointer-events-none">
-//                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent animate-scan"></div>
-//                   </div>
-//                 )}
-
-//                 {/* Body outline */}
-//                 <div className="absolute inset-0 flex items-center justify-center">
-//                   <div className="relative">
-//                     {/* Body silhouette */}
-//                     <div className="w-64 h-96 rounded-t-full bg-gradient-to-b from-blue-100/30 to-blue-50/30 border-2 border-blue-200/30"></div>
-                    
-//                     {/* Organs */}
-//                     {organs.map((organ) => (
-//                       <button
-//                         key={organ.id}
-//                         onClick={() => handleOrganClick(organ.id)}
-//                         className={`absolute ${organ.position} group transition-all duration-300 ${
-//                           selectedOrgan === organ.id
-//                             ? "scale-125 z-10"
-//                             : "hover:scale-110"
-//                         }`}
-//                       >
-//                         <div
-//                           className={`p-4 rounded-2xl ${organ.bg} ${organ.border} border-2 ${
-//                             selectedOrgan === organ.id
-//                               ? "shadow-xl ring-2 ring-offset-2 ring-blue-400"
-//                               : "shadow-lg group-hover:shadow-xl"
-//                           }`}
-//                         >
-//                           <organ.icon className={`h-8 w-8 ${organ.color}`} />
-//                           <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full border border-blue-200 flex items-center justify-center">
-//                             <div
-//                               className={`w-2 h-2 rounded-full ${
-//                                 healthData[organ.id]?.status === "normal" ||
-//                                 healthData[organ.id]?.status === "optimal"
-//                                   ? "bg-green-500"
-//                                   : "bg-yellow-500 animate-pulse"
-//                               }`}
-//                             ></div>
-//                           </div>
-//                         </div>
-                        
-//                         {/* Organ label */}
-//                         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 whitespace-nowrap">
-//                           <div className="text-xs font-medium text-gray-700 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
-//                             {organ.name}
-//                           </div>
-//                         </div>
-//                       </button>
-//                     ))}
-//                   </div>
-//                 </div>
-
-//                 {/* Health indicators */}
-//                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-//                   <div className="flex items-center space-x-6">
-//                     {[
-//                       { color: "bg-green-500", label: "Normal" },
-//                       { color: "bg-yellow-500", label: "Needs Check" },
-//                       { color: "bg-red-500", label: "Attention Needed" },
-//                     ].map((indicator, index) => (
-//                       <div key={index} className="flex items-center space-x-2">
-//                         <div className={`w-3 h-3 rounded-full ${indicator.color}`}></div>
-//                         <span className="text-xs text-gray-600">{indicator.label}</span>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* SELECTED ORGAN DETAILS */}
-//               <div className="mt-6 bg-white rounded-xl border border-blue-100 p-6">
-//                 <div className="flex items-center justify-between mb-4">
-//                   <div className="flex items-center space-x-3">
-//                     {organs.find((o) => o.id === selectedOrgan) && (
-//                       <>
-//                         <div
-//                           className={`p-3 rounded-xl ${
-//                             organs.find((o) => o.id === selectedOrgan).bg
-//                           }`}
-//                         >
-//                           {React.createElement(
-//                             organs.find((o) => o.id === selectedOrgan).icon,
-//                             {
-//                               className: `h-6 w-6 ${
-//                                 organs.find((o) => o.id === selectedOrgan).color
-//                               }`,
-//                             }
-//                           )}
-//                         </div>
-//                         <div>
-//                           <h3 className="font-bold text-gray-800">
-//                             {organs.find((o) => o.id === selectedOrgan).name}
-//                           </h3>
-//                           <p className="text-sm text-gray-600">
-//                             {organs.find((o) => o.id === selectedOrgan).description}
-//                           </p>
-//                         </div>
-//                       </>
-//                     )}
-//                   </div>
-//                   <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-//                     View Details <ChevronRight className="h-4 w-4 ml-1" />
-//                   </button>
-//                 </div>
-
-//                 <div className="grid grid-cols-2 gap-4">
-//                   {Object.entries(getOrganData()).map(([key, value]) => (
-//                     <div key={key} className="bg-gray-50 rounded-lg p-4">
-//                       <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-//                         {key.replace(/([A-Z])/g, " $1")}
-//                       </div>
-//                       <div className="text-lg font-bold text-gray-800">{value}</div>
-//                     </div>
-//                   ))}
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* RIGHT COLUMN - HEALTH STATS & ACTIONS */}
-//           <div className="space-y-6">
-//             {/* HEALTH OVERVIEW */}
-//             <div className="bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
-//               <h3 className="font-bold text-gray-800 mb-4">Health Overview</h3>
-//               <div className="space-y-4">
-//                 {stats.map((stat, index) => (
-//                   <div
-//                     key={index}
-//                     onClick={() => navigate(stat.path)}
-//                     className="group cursor-pointer"
-//                   >
-//                     <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
-//                       <div className="flex items-center space-x-3">
-//                         <div className={`p-2 rounded-lg ${stat.bg}`}>
-//                           <stat.icon className={`h-5 w-5 ${stat.color}`} />
-//                         </div>
-//                         <div>
-//                           <div className="text-lg font-bold text-gray-800">{stat.value}</div>
-//                           <div className="text-sm text-gray-600">{stat.label}</div>
-//                         </div>
-//                       </div>
-//                       <div className="text-xs text-gray-500">{stat.trend}</div>
-//                     </div>
-//                   </div>
-//                 ))}
-//               </div>
-//             </div>
-
-//             {/* QUICK ACTIONS */}
-//             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white">
-//               <h3 className="font-bold mb-4">Quick Actions</h3>
-//               <div className="space-y-3">
-//                 <button className="w-full flex items-center justify-between p-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors">
-//                   <span>Schedule Check-up</span>
-//                   <ChevronRight className="h-4 w-4" />
-//                 </button>
-//                 <button className="w-full flex items-center justify-between p-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors">
-//                   <span>View Recent Reports</span>
-//                   <ChevronRight className="h-4 w-4" />
-//                 </button>
-//                 <button className="w-full flex items-center justify-between p-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors">
-//                   <span>Family Health Insights</span>
-//                   <TrendingUp className="h-4 w-4" />
-//                 </button>
-//               </div>
-//             </div>
-
-//             {/* HEALTH INSIGHTS */}
-//             <div className="bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
-//               <h3 className="font-bold text-gray-800 mb-4">Health Insights</h3>
-//               <div className="space-y-3">
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-//                   <div>
-//                     <p className="text-sm font-medium text-gray-800">
-//                       Heart rate is optimal
-//                     </p>
-//                     <p className="text-xs text-gray-600">Resting at 72 BPM</p>
-//                   </div>
-//                 </div>
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2"></div>
-//                   <div>
-//                     <p className="text-sm font-medium text-gray-800">
-//                       Annual check-up due
-//                     </p>
-//                     <p className="text-xs text-gray-600">Schedule within 30 days</p>
-//                   </div>
-//                 </div>
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-//                   <div>
-//                     <p className="text-sm font-medium text-gray-800">
-//                       All vaccinations current
-//                     </p>
-//                     <p className="text-xs text-gray-600">Next due in 6 months</p>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* REPORTS SECTION */}
-//         {member_id && (
-//           <div className="mt-8 bg-white rounded-2xl border border-blue-100 shadow-lg overflow-hidden">
-//             <div className="p-6 border-b border-blue-100">
-//               <div className="flex items-center justify-between">
-//                 <div>
-//                   <h3 className="text-lg font-bold text-gray-800">
-//                     Recent Medical Reports
-//                   </h3>
-//                   <p className="text-sm text-gray-600">
-//                     Interactive analysis of your health documents
-//                   </p>
-//                 </div>
-//                 <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all text-sm font-medium shadow-md">
-//                   Analyze All Reports
-//                 </button>
-//               </div>
-//             </div>
-//             <div className="p-1">
-//               <MemberReportTable />
-//             </div>
-//           </div>
-//         )}
-//       </main>
-
-//       {/* CSS Animations */}
-//       <style jsx>{`
-//         @keyframes scan {
-//           0% {
-//             transform: translateX(-100%);
-//           }
-//           100% {
-//             transform: translateX(100%);
-//           }
-//         }
-//         .animate-scan {
-//           animation: scan 2s linear infinite;
-//         }
-        
-//         /* 3D hover effects */
-//         .group:hover .group-hover\:shadow-3d {
-//           box-shadow: 
-//             0 20px 40px rgba(59, 130, 246, 0.1),
-//             inset 0 1px 0 rgba(255, 255, 255, 0.6);
-//         }
-//       `}</style>
-//     </div>
-//   );
-// };
-
-// export default SimpleMedicalDashboard;

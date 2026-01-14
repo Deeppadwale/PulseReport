@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, Date, String
+from sqlalchemy import NVARCHAR, Column, Integer, ForeignKey, Date, String
 from sqlalchemy.orm import relationship
 from datetime import date
 from app.Models.database import Base
@@ -39,5 +39,5 @@ class Med_MemberReportDetail(Base):
     Report_id = Column(Integer, ForeignKey("Med_ReportMaster.Report_id"), nullable=False)
     Doctor_and_Hospital_name = Column(String(500))
     uploaded_file_report = Column(String(200))
-
+    Naration=Column(NVARCHAR(500))
     report = relationship("Med_MemberReport", back_populates="details")

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import PulseReportLogo from '../../assets/DP.png';
+import PulseReportLogo from '../../assets/DP 3.png';
 
 const PulseReportEBStyle = () => {
     const navigate = useNavigate();
@@ -29,7 +29,7 @@ const PulseReportEBStyle = () => {
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-3">
                         <img src={PulseReportLogo} alt="PulseReport Logo" className="h-20 w-auto object-contain" />
-                        <span className="text-2xl font-black text-blue-900 tracking-tighter">PulseReport</span>
+                        {/* <span className="text-2xl font-black text-blue-900 tracking-tighter">PulseReport</span> */}
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

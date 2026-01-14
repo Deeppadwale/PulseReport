@@ -94,6 +94,7 @@ async def update_member_report(
                     MemberReport_id=report.MemberReport_id,
                     report_date=d["report_date"],
                     Report_id=d["Report_id"],
+                    Naration=d.get("Naration"),
                     Doctor_and_Hospital_name=d.get("Doctor_and_Hospital_name"),
                     uploaded_file_report=file_path
                 )
@@ -107,7 +108,7 @@ async def update_member_report(
                 existing = next((x for x in report.details if x.detail_id == detail_id), None)
 
                 if existing:
-                    for field in ["report_date", "Report_id", "Doctor_and_Hospital_name"]:
+                    for field in ["report_date", "Report_id","Naration","Doctor_and_Hospital_name"]:
                         if field in d:
                             setattr(existing, field, d[field])
 

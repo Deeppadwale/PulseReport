@@ -29,6 +29,7 @@ async def create_report(db: AsyncSession, payload: dict, files: dict):
                 Med_MemberReportDetail(
                     report_date=d["report_date"],
                     Report_id=d["Report_id"],
+                    Naration=d.get("Naration"),
                     Doctor_and_Hospital_name=d.get("Doctor_and_Hospital_name"),
                     uploaded_file_report=file_path
                 )
@@ -91,6 +92,7 @@ async def get_reports_by_family(db: AsyncSession, family_id: int):
             mrd.detail_id,
             mrd.Report_id,
             mrd.report_date,
+            mrd.Naration,
             mrd.Doctor_and_Hospital_name,
             mrd.uploaded_file_report,
 
@@ -141,6 +143,7 @@ async def get_reports_by_family(db: AsyncSession, family_id: int):
                     MemberReport_id=row["MemberReport_id"],
                     report_date=row["report_date"],
                     Report_id=row["Report_id"],
+                    Naration=row["Naration"],
                     Doctor_and_Hospital_name=row["Doctor_and_Hospital_name"],
                     uploaded_file_report=row["uploaded_file_report"],
                 )
@@ -183,6 +186,7 @@ async def get_reports_by_member(
             mrd.detail_id,
             mrd.Report_id,
             mrd.report_date,
+            mrd.Naration,
             mrd.Doctor_and_Hospital_name,
             mrd.uploaded_file_report,
 
@@ -234,6 +238,7 @@ async def get_reports_by_member(
                     report_date=row["report_date"],
                     report_name=row["report_name"],
                     Report_id=row["Report_id"],
+                    Naration=row["Naration"],
                     Doctor_and_Hospital_name=row["Doctor_and_Hospital_name"],
                     uploaded_file_report=row["uploaded_file_report"],
                 )

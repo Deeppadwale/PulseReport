@@ -9,7 +9,7 @@ class MemberReportDetailSchema(BaseModel):
     detail_id: Optional[int]
     report_date: date
     Report_id: int
-    
+    Naration: Optional[str] = None
     Doctor_and_Hospital_name: Optional[str]
     file_key: Optional[str]
 
@@ -41,6 +41,7 @@ class MemberReportDetailViewSchema(BaseModel):
     report_date: date
     Report_id: int
     report_name:Optional[str]
+    Naration: Optional[str] = None
     Doctor_and_Hospital_name: Optional[str]
     uploaded_file_report: Optional[str]
 

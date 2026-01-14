@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
@@ -10,7 +10,10 @@ from app.Services.UpcommingAppoinment_Services import (
     delete_upcoming_appointment,
     get_all_appointments,
     get_appointment_by_id,
+   
     get_appointments_by_family,
+    get_reminders,
+    update_reminder_flag_by_member,
     update_upcoming_appointment
 )
 from app.Schemas.UpcommingAppoinment_Schemas import (
@@ -65,7 +68,11 @@ async def read_appointments_by_family(
                     "Morning": d.Morning,
                     "AfterNoon": d.AfterNoon,
                     "Evening": d.Evening,
-                    "Medicine_name": d.Medicine_name
+                    "Medicine_name": d.Medicine_name,
+                    "Remark":d.Remark,
+                    "cource_days":d.cource_days,
+                    "Reminder": getattr(d, "Reminder", "Y")
+
                 }
                 for d in sorted(head.details, key=lambda x: x.upcommingAppointmentDetail_id, reverse=True)
             ]
@@ -98,6 +105,10 @@ async def create_appointment(
         payload_obj=payload_obj,
         prescription_file=prescription_file
     )
+
+    for detail in appointment.details:
+      if not getattr(detail, "Reminder", None):
+        detail.Reminder = "Y"
 
     return {
         "message": "Appointment created successfully",
@@ -162,4 +173,38 @@ async def download_file(file_name: str):
         media_type="application/octet-stream",
         filename=file_name,
         headers={"Content-Disposition": f'attachment; filename="{file_name}"'}
+    )
+
+
+
+@router.get("/reminder/")
+async def reminder_endpoint(
+    member_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    reminders = await get_reminders(db, member_id)
+    return reminders
+
+
+
+
+
+
+
+
+@router.put("/reminder/update")
+async def update_reminder(
+    member_id: int = Query(..., description="Member ID"),
+    detail_id: int = Query(..., description="Appointment Detail ID"),
+    reminder: str = Query(..., description="Y or N"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update Reminder flag using member_id and detail_id
+    """
+    return await update_reminder_flag_by_member(
+        db=db,
+        member_id=member_id,
+        detail_id=detail_id,
+        reminder_flag=reminder
     )

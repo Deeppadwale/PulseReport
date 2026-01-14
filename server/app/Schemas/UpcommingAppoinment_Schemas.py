@@ -12,6 +12,9 @@ class UpcomingAppointmentDetailSchema(BaseModel):
     AfterNoon: str | None = None
     Evening: str | None = None
     Medicine_name: str | None = None
+    Remark : str | None = None    
+    cource_days: int | None = None
+    Reminder: str | None = 'Y'
 
 
 
@@ -52,10 +55,14 @@ class UpcomingAppointmentDetailView(BaseModel):
     AfterNoon: str
     Evening: str
     Medicine_name: str
+    Remark : Optional[str]      
+    cource_days: int | None = None
+    Reminder: str
+
 
     class Config:
         orm_mode = True
-
+ 
 
 class UpcomingAppointmentView(BaseModel):
     upcommingAppointment_id: int
@@ -68,6 +75,7 @@ class UpcomingAppointmentView(BaseModel):
     uploaded_file_prescription: Optional[str]
 
     details: List[UpcomingAppointmentDetailView]
-
+     
     class Config:
         orm_mode = True
+ 

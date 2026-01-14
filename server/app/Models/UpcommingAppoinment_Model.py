@@ -44,13 +44,16 @@ class Med_upcomingAppointment_detail(Base):
     Start_date = Column(Date, nullable=False)
     End_date = Column(Date, nullable=False)
 
-    Morning = Column(CHAR(1), nullable=False)     # Y/N
+    Morning = Column(CHAR(1), nullable=False)     
     AfterNoon = Column(CHAR(1), nullable=False)
     Evening = Column(CHAR(1), nullable=False)
-
+    Remark = Column(String(500), nullable=False)      
+    cource_days = Column(Integer, nullable=False)
     Medicine_name = Column(String(200), nullable=False)
+    Reminder = Column(CHAR(1), nullable=False, default='Y')
 
     appointment = relationship(
         "Med_upcomingAppointment_head",
         back_populates="details"
     )
+ 

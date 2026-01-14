@@ -7,6 +7,8 @@ import { memberReportApi } from '../services/memberReportApi';
 import { otpVerificationApi } from '../services/otpVerification.jsx';
 import { familyMasterMainApi } from '../services/familyMasterApi.jsx';
 import {upcomingAppointmentApi}from '../services/upcomingAppointmentApi.jsx'
+import { dashboardApi } from '../services/dashboardApi.jsx';
+
 
 export const store = configureStore({
   reducer: {
@@ -16,7 +18,9 @@ export const store = configureStore({
     [memberReportApi.reducerPath]: memberReportApi.reducer,
     [otpVerificationApi.reducerPath]: otpVerificationApi.reducer,
     [familyMasterMainApi.reducerPath]: familyMasterMainApi.reducer,
-    [upcomingAppointmentApi.reducerPath]:upcomingAppointmentApi.reducer
+    [upcomingAppointmentApi.reducerPath]:upcomingAppointmentApi.reducer,
+    [dashboardApi.reducerPath]:dashboardApi.reducer,
+    
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -27,6 +31,8 @@ export const store = configureStore({
       .concat(memberReportApi.middleware)
       .concat(otpVerificationApi.middleware)
       .concat(familyMasterMainApi.middleware)
-      .concat(upcomingAppointmentApi.middleware),
+      .concat(upcomingAppointmentApi.middleware)
+      .concat(dashboardApi.middleware),
+
 
 });
