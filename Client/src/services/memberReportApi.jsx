@@ -100,20 +100,30 @@ export const memberReportApi = createApi({
         responseHandler: (response) => response.blob(),
       }),
     }),
-    sendPdfEmail: builder.mutation({
-      query: ({ email, subject, messagebody, file }) => {
-        const formData = new FormData();
-        formData.append('email', email);
-        formData.append('subject', subject);
-        formData.append('messagebody', messagebody);
-        if (file) formData.append('pdf', file);
-        return {
-          url: '/member-report/send-email-with-attachment',
-          method: 'POST',
-          body: formData,
-        };
-      },
-    }),
+
+    
+sendPdfEmail: builder.mutation({
+  query: ({ email, subject, messagebody, files }) => {
+    const formData = new FormData();
+
+    formData.append('email', email);
+    formData.append('subject', subject);
+    formData.append('messagebody', messagebody);
+
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('files', file); // 👈 SAME KEY NAME
+      });
+    }
+
+    return {
+      url: '/member-report/send-email-with-attachment',
+      method: 'POST',
+      body: formData,
+    };
+  },
+}),
+
 
   }),
 });

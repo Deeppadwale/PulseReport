@@ -80,8 +80,6 @@ async def read_appointments_by_family(
 
     return response
 
-
-
 @router.post("/")
 async def create_appointment(
     payload: str = Form(...),                        
@@ -176,7 +174,6 @@ async def download_file(file_name: str):
     )
 
 
-
 @router.get("/reminder/")
 async def reminder_endpoint(
     member_id: int | None = None,
@@ -184,12 +181,6 @@ async def reminder_endpoint(
 ):
     reminders = await get_reminders(db, member_id)
     return reminders
-
-
-
-
-
-
 
 
 @router.put("/reminder/update")

@@ -5,11 +5,9 @@ from sqlalchemy import and_, desc, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi import UploadFile, HTTPException
-
 from app.Models.UpcommingAppoinment_Model import (
     Med_upcomingAppointment_head,
-    Med_upcomingAppointment_detail
-)
+    Med_upcomingAppointment_detail)
 from app.Schemas.UpcommingAppoinment_Schemas import (
     UpcomingAppointmentHeadSchema,
     UpcomingAppointmentUpdateSchema
@@ -36,8 +34,6 @@ async def save_prescription_file(file: UploadFile) -> str:
 def delete_prescription_file(file_path: str):
     if file_path and os.path.exists(file_path):
         os.remove(file_path)
-
-
 
 
 
@@ -167,7 +163,6 @@ async def create_upcoming_appointment(
     return result.scalars().first()
 
 
-# ========================= UPDATE =========================
 
 async def update_upcoming_appointment(
     db: AsyncSession,

@@ -2709,7 +2709,7 @@ function UpcomingAppointment() {
 
                       {/* Expanded Content */}
                       {!isDeleted && isExpanded && (
-                        <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+                        <div className="px-1 pb-1 border-t border-gray-100 pt-1">
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                             {/* Medicine Name */}
                             <div className="md:col-span-3">
@@ -2744,7 +2744,7 @@ function UpcomingAppointment() {
                                 />
                                 <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">Optional notes about this medicine</p>
+                            
                             </div>
 
                              <div className="md:col-span-1">

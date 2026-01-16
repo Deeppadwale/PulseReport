@@ -940,31 +940,31 @@ function ReportMaster() {
             )
         },
     
-        {
-            header: "Actions",
-            accessor: "action",
-            isAction: true,
-            actionRenderer: (row) => (
-                <div className="flex justify-center space-x-2">
-                    <button
-                        onClick={() => handleEdit(row)}
-                        className="p-2.5 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                        title="Edit Report"
-                        disabled={isLoading || isAdding || isUpdating}
-                    >
-                        <PencilSquareIcon className="h-5 w-5 text-blue-600" />
-                    </button>
-                    <button
-                        onClick={() => handleDelete(row.Report_id || row.id)}
-                        className="p-2.5 hover:bg-red-50 rounded-lg transition-all duration-200"
-                        title="Delete Report"
-                        disabled={isLoading || isDeleting}
-                    >
-                        <Trash2 className="h-5 w-5 text-red-600" />
-                    </button>
-                </div>
-            ),
-        },
+        // {
+        //     header: "Actions",
+        //     accessor: "action",
+        //     isAction: true,
+        //     actionRenderer: (row) => (
+        //         <div className="flex justify-center space-x-2">
+        //             <button
+        //                 onClick={() => handleEdit(row)}
+        //                 className="p-2.5 hover:bg-blue-50 rounded-lg transition-all duration-200"
+        //                 title="Edit Report"
+        //                 disabled={isLoading || isAdding || isUpdating}
+        //             >
+        //                 <PencilSquareIcon className="h-5 w-5 text-blue-600" />
+        //             </button>
+        //             <button
+        //                 onClick={() => handleDelete(row.Report_id || row.id)}
+        //                 className="p-2.5 hover:bg-red-50 rounded-lg transition-all duration-200"
+        //                 title="Delete Report"
+        //                 disabled={isLoading || isDeleting}
+        //             >
+        //                 <Trash2 className="h-5 w-5 text-red-600" />
+        //             </button>
+        //         </div>
+        //     ),
+        // },
     ];
 
     if (isLoading) {

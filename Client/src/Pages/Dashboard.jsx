@@ -960,81 +960,77 @@ const SimpleMedicalDashboard = () => {
                   </div>
                 ) : hasData(detailedRecentActivity) ? (
               
-                  <div className="rounded-lg border border-gray-200">
-                    
-                    <table className="min-w-full">
-                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                            Activity
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                            Details
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase">
-                            Member
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
-                            Date
-                          </th>
-                        </tr>
-                      </thead>
-                    </table>
+<div className="rounded-lg border border-gray-200">
+  <div className="max-h-[400px] overflow-y-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      
+      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+            Activity
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+            Details
+          </th>
+          <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+            Member
+          </th>
+          <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+            Date
+          </th>
+        </tr>
+      </thead>
 
-                    <div className="max-h-[400px] overflow-y-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <tbody className="bg-white">
-                          {detailedRecentActivity.map((activity, index) => {
-                            const activityConfig =
-                              activityIconMap[activity.activity_type] || {
-                                icon: Activity,
-                                color: "text-gray-600",
-                                bgColor: "bg-gray-100",
-                                label:
-                                  activity.activity_type?.replace(/_/g, " ") ||
-                                  "Activity",
-                              };
+      <tbody className="bg-white">
+        {detailedRecentActivity.map((activity, index) => {
+          const activityConfig =
+            activityIconMap[activity.activity_type] || {
+              icon: Activity,
+              color: "text-gray-600",
+              bgColor: "bg-gray-100",
+              label:
+                activity.activity_type?.replace(/_/g, " ") || "Activity",
+            };
 
-                            const IconComponent = activityConfig.icon;
+          const IconComponent = activityConfig.icon;
 
-                            return (
-                              <tr
-                                key={activity.activity_id || index}
-                                className="hover:bg-gray-50 transition-colors"
-                              >
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className={`p-2 rounded-lg ${activityConfig.bgColor}`}
-                                    >
-                                      <IconComponent
-                                        className={`h-5 w-5 ${activityConfig.color}`}
-                                      />
-                                    </div>
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {activityConfig.label}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                  {getActivityDescription(activity)}
-                                </td>
-
-                                <td className="px-6 py-4 text-sm text-gray-900">
-                                  {getMemberNameFromActivity(activity)}
-                                </td>
-
-                                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                                  {formatDate(activity.activity_date)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+          return (
+            <tr
+              key={activity.activity_id || index}
+              className="hover:bg-gray-50 transition-colors"
+            >
+              <td className="px-6 py-4 text-left">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${activityConfig.bgColor}`}>
+                    <IconComponent
+                      className={`h-5 w-5 ${activityConfig.color}`}
+                    />
                   </div>
+                  <span className="text-sm font-medium text-gray-900">
+                    {activityConfig.label}
+                  </span>
+                </div>
+              </td>
+
+              <td className="px-6 py-4 text-left text-sm text-gray-600">
+                {getActivityDescription(activity)}
+              </td>
+
+              <td className="px-6 py-4 text-center text-sm text-gray-900">
+                {getMemberNameFromActivity(activity)}
+              </td>
+
+              <td className="px-6 py-4 text-center text-sm text-gray-900 whitespace-nowrap">
+                {formatDate(activity.activity_date)}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>
+
                 ) : null}
               </section>
             )}

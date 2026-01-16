@@ -240,12 +240,48 @@ async def get_reports_by_member(
     )
 
 
+# @router.post("/send-email-with-attachment")
+# async def send_email_with_attachment(
+#     email: str = Form(...),
+#     subject: str = Form(...),
+#     messagebody: str = Form(...),
+#     file: UploadFile = File(...)   
+# ):
+#     try:
+#         message = MessageSchema(
+#             subject=subject,
+#             recipients=[email],
+#             body=messagebody,
+#             subtype="plain",
+#             attachments=[file]   
+#         )
+
+#         await fast_mail.send_message(message)
+
+#         return JSONResponse(
+#             status_code=200,
+#             content={"message": "Email sent successfully"}
+#         )
+
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Failed to send email: {str(e)}"
+#         )
+
+
+
+from typing import List
+from fastapi import APIRouter, Form, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi_mail import MessageSchema
+
 @router.post("/send-email-with-attachment")
 async def send_email_with_attachment(
     email: str = Form(...),
     subject: str = Form(...),
     messagebody: str = Form(...),
-    file: UploadFile = File(...)   
+    files: List[UploadFile] = File(...)   # 👈 multiple files
 ):
     try:
         message = MessageSchema(
@@ -253,7 +289,7 @@ async def send_email_with_attachment(
             recipients=[email],
             body=messagebody,
             subtype="plain",
-            attachments=[file]   
+            attachments=files   # 👈 pass list directly
         )
 
         await fast_mail.send_message(message)
